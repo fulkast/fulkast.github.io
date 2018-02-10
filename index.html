@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <title>Normal Plot</title>
     <meta name="description" content="">
-    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="d3.min.js" charset="utf-8"></script>
     <style type="text/css">
     body {
         font: 10px sans-serif;
@@ -48,21 +48,19 @@ var margin = {
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
-var x = d3.scale.linear()
+var x = d3.scaleLinear()
     .range([0, width]);
 
-var y = d3.scale.linear()
+var y = d3.scaleLinear()
     .range([height, 0]);
 
-var xAxis = d3.svg.axis()
-    .scale(x)
-    .orient("bottom");
+var xAxis = d3.axisBottom()
+    .scale(x);
 
-var yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left");
+var yAxis = d3.axisLeft()
+    .scale(y);
 
-var line = d3.svg.line()
+var line = d3.line()
     .x(function(d) {
         return x(d.q);
     })
