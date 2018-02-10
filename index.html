@@ -1,146 +1,134 @@
 <!DOCTYPE html>
-<html>
+<meta charset="utf-8">
+<style>
+.line {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+</style>
+<svg width="960" height="500"></svg>
+<script src="d3.min.js"></script>
 
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <title>Normal Plot</title>
-    <meta name="description" content="">
-    <script src="d3.min.js" charset="utf-8"></script>
-    <style type="text/css">
-    body {
-        font: 10px sans-serif;
-    }
-    .axis path,
-    .axis line {
-        fill: none;
-        stroke: #000;
-        shape-rendering: crispEdges;
-    }
-    /*.x.axis path {
-        display: none;
-    }*/
-    .line {
-        fill: none;
-        stroke: steelblue;
-        stroke-width: 1.5px;
-    }
-    </style>
-</head>
+<div id="option">
+    <input name="updateButton"
+           type="button"
+           value="Step"
+           onclick="stepSimulation()" />
+</div>
 
-<body>
+<script>
+var n = 400;
+var mean = 0, sigma = 1;
+var gaussianConstant = 1 / Math.sqrt(2 * Math.PI);
 
-</body>
+function gaussian(x) {
+  x = (x - mean) / sigma;
+  return gaussianConstant * Math.exp(-.5 * x * x) / sigma;
+};
 
-<script type="text/javascript">
-//setting up empty data array
-var data = [];
+random = d3.randomNormal(mean, sigma),
+data = d3.range(n).map(gaussian);
 
-getData(); // popuate data
-
-// line chart based on http://bl.ocks.org/mbostock/3883245
-var margin = {
-        top: 20,
-        right: 20,
-        bottom: 30,
-        left: 50
-    },
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
-
+var svg = d3.select("svg"),
+    margin = {top: 20, right: 20, bottom: 20, left: 40},
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom,
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 var x = d3.scaleLinear()
+    .domain([0, n - 1])
     .range([0, width]);
-
 var y = d3.scaleLinear()
+    .domain([-1, 1])
     .range([height, 0]);
-
-var xAxis = d3.axisBottom()
-    .scale(x);
-
-var yAxis = d3.axisLeft()
-    .scale(y);
-
 var line = d3.line()
-    .x(function(d) {
-        return x(d.q);
-    })
-    .y(function(d) {
-        return y(d.p);
-    });
-
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-x.domain(d3.extent(data, function(d) {
-    return d.q;
-}));
-y.domain(d3.extent(data, function(d) {
-    return d.p;
-}));
-
-svg.append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(xAxis);
-
-svg.append("g")
-    .attr("class", "y axis")
-    .call(yAxis);
-
-svg.append("path")
+    .x(function(d, i) { return x(i); })
+    .y(function(d, i) { return y(d); });
+g.append("defs").append("clipPath")
+    .attr("id", "clip")
+  .append("rect")
+    .attr("width", width)
+    .attr("height", height);
+g.append("g")
+    .attr("class", "axis axis--x")
+    .attr("transform", "translate(0," + y(0) + ")")
+    .call(d3.axisBottom(x));
+g.append("g")
+    .attr("class", "axis axis--y")
+    .call(d3.axisLeft(y));
+g.append("g")
+    .attr("clip-path", "url(#clip)")
+  .append("path")
     .datum(data)
     .attr("class", "line")
-    .attr("d", line);
+  .transition()
+    .duration(750)
+    .ease(d3.easeLinear)
+    .on("start", tick);
 
-function getData() {
+var robot_height = 20, robot_width = 20;
+var robot_x_position = 0;
 
-// loop to populate data array with
-// probabily - quantile pairs
-for (var i = 0; i < 100000; i++) {
-    q = normal() // calc random draw from normal dist
-    p = gaussian(q) // calc prob of rand draw
-    el = {
-        "q": q,
-        "p": p
-    }
-    data.push(el)
-};
+g.append("g")
+  .attr("class", "robot")
+  .append("rect")
+  .attr("width", robot_width)
+  .attr("height", robot_height)
+  .attr("y",height/2 - robot_height)
+  .attr("x", robot_x_position)
+  .attr("fill-opacity", 0.1);
 
-// need to sort for plotting
-//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
-data.sort(function(x, y) {
-    return x.q - y.q;
-});
+g.append("g")
+.attr("class", "landmark")
+.append("rect")
+.attr("width", robot_width)
+.attr("height", 3*robot_height)
+.attr("y",height/2 - 3*robot_height)
+.attr("x", width/2)
+.attr("fill", "brown");
+
+function tick() {
+
+  robot_x_position += x(1);
+  // Move robot
+  g.select(".robot")
+    .transition()
+    .attr("transform", "translate(" + robot_x_position + ",0)")
+    .duration(10);
+
+  var laser = d3.line()
+      .x(function (d) {return d;})
+      .y(function () {return height/2 - robot_height/2;});
+
+  g.append("g")
+      .attr("class", "laser").append("path")
+        .datum([robot_x_position + robot_width, width/2])
+        .attr("fill", "none")
+        .attr("stroke", "red")
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round")
+        .attr("stroke-width", 1.5)
+        .attr("d", laser);
+
+  g.select(".laser").transition().duration(100).remove();
+
+  // Update sensor information
+  var sensor_value = width/2 - robot_x_position + random();
+
+  for (var i = 0; i < n; i++) {
+    data[i] = gaussian((width/2-x(i)+robot_width/2)-sensor_value);
+  }
+
+  console.log((width/2-robot_x_position), sensor_value);
+
+  // Redraw the line.
+  d3.select(this)
+      .attr("d", line)
+      .attr("transform", null);
+  d3.active(this)
+  // .attr("transform", "translate(" + x(0) + ",0)")
+    .transition()
+      .on("start", tick);
+
 }
-
-// from http://bl.ocks.org/mbostock/4349187
-// Sample from a normal distribution with mean 0, stddev 1.
-function normal() {
-    var x = 0,
-        y = 0,
-        rds, c;
-    do {
-        x = Math.random() * 2 - 1;
-        y = Math.random() * 2 - 1;
-        rds = x * x + y * y;
-    } while (rds == 0 || rds > 1);
-    c = Math.sqrt(-2 * Math.log(rds) / rds); // Box-Muller transform
-    return x * c; // throw away extra sample y * c
-}
-
-//taken from Jason Davies science library
-// https://github.com/jasondavies/science.js/
-function gaussian(x) {
-	var gaussianConstant = 1 / Math.sqrt(2 * Math.PI),
-		mean = 0,
-    	sigma = 1;
-
-    x = (x - mean) / sigma;
-    return gaussianConstant * Math.exp(-.5 * x * x) / sigma;
-};
 </script>
-
-</html>
