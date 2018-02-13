@@ -1,127 +1,273 @@
-<!DOCTYPE html>
-<meta charset="utf-8">
-<style>
+<!-- <!DOCTYPE html>
+<meta charset="utf-8"> -->
+<!-- <style>
 .line {
   fill: none;
   stroke: #000;
   stroke-width: 1.5px;
 }
-</style>
-<svg width="960" height="500"></svg>
-<script src="d3.min.js"></script>
+</style> -->
+<!-- <svg width="960" height="500"></svg> -->
+<!-- <script src="d3.min.js"></script> -->
 
+<!-- <div id="navigation">
+<a href="particle_filter.html" title="Particle Filter">
+ <img src="laser.gif" alt="HTML tutorial" style="width:261px;height:130px;border:0;">
+ Particle Filter
+</a>
+</div>
+
+
+<a href="hog.html" title="Histogram of Oriented Gradients">
+ HOG
+</a> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Robotics Visualizations | Force layout with images</title>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+    <style>
+      @import url(http://fonts.googleapis.com/css?family=Source+Code+Pro:400,600);
+      body {font-family: "Source Code Pro", Consolas, monaco, monospace; line-height: 160%; font-size: 16px;  margin: 0; }
+      path.link {
+        fill: none;
+        stroke-width: 2px;
+      }
+      .node:not(:hover) .nodetext {
+        display: none;
+      }
+      h1 { font-size: 36px; margin: 10px 0; text-transform: uppercase; font-weight: normal;}
+      h2, h3 { font-size: 18px; margin: 5px 0 ; font-weight: normal;}
+      header {padding: 20px; position: absolute; top: 0; left: 0;}
+      a:link { color: #EE3124; text-decoration: none;}
+      a:visited { color: #EE3124; }
+      a:hover { color: #A4CD39; text-decoration: underline;}
+      a:active { color: #EE3124; }
+    </style>
+</head>
+
+
+<body style="background-color:powderblue;">
+    <header>
+      <h1>Robotics Visualizations</h1>
+      <h2>Click to view their content</h2>
+      <h3>and link to their visualization</h3>
+    </header>
+    <!-- container for force layout visualisation  -->
+    <section id="vis"></section>
 <script>
-var n = 400;
-var mean = 0, sigma = 5;
-var gaussianConstant = 1 / Math.sqrt(2 * Math.PI);
 
-function gaussian(x) {
-  x = (x - mean) / sigma;
-  return gaussianConstant * Math.exp(-.5 * x * x) / sigma;
-};
+// some colour variables
+  var tcBlack = "#130C0E";
 
-random = d3.randomNormal(mean, sigma),
-data = d3.range(n).map(gaussian);
+// rest of vars
+var w = 960,
+    h = 800,
+    maxNodeSize = 50,
+    x_browser = 20,
+    y_browser = 25,
+    root;
 
-var svg = d3.select("svg"),
-    margin = {top: 20, right: 20, bottom: 20, left: 40},
-    width = +svg.attr("width") - margin.left - margin.right,
-    height = +svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-var x = d3.scaleLinear()
-    .domain([0, n - 1])
-    .range([0, width]);
-var y = d3.scaleLinear()
-    .domain([-1, 1])
-    .range([height, 0]);
-var line = d3.line()
-    .x(function(d, i) { return x(i); })
-    .y(function(d, i) { return y(d); });
-g.append("defs").append("clipPath")
-    .attr("id", "clip")
-  .append("rect")
-    .attr("width", width)
-    .attr("height", height);
-g.append("g")
-    .attr("class", "axis axis--x")
-    .attr("transform", "translate(0," + y(0) + ")")
-    .call(d3.axisBottom(x));
-g.append("g")
-    .attr("class", "axis axis--y")
-    .call(d3.axisLeft(y));
-g.append("g")
-    .attr("clip-path", "url(#clip)")
-  .append("path")
-    .datum(data)
-    .attr("class", "line")
-  .transition()
-    .duration(750)
-    .ease(d3.easeLinear)
-    .on("start", tick);
+var vis;
+var force = d3.layout.force();
 
-var robot_height = 20, robot_width = 20;
-var robot_x_position = 0;
+vis = d3.select("#vis").append("svg").attr("width", w).attr("height", h);
 
-g.append("g")
-  .attr("class", "robot")
-  .append("rect")
-  .attr("width", robot_width)
-  .attr("height", robot_height)
-  .attr("y",height/2 - robot_height)
-  .attr("x", robot_x_position)
-  .attr("fill-opacity", 0.1);
+d3.json("marvel.json", function(json) {
 
-g.append("g")
-.attr("class", "landmark")
-.append("rect")
-.attr("width", robot_width)
-.attr("height", 3*robot_height)
-.attr("y",height/2 - 3*robot_height)
-.attr("x", width/2)
-.attr("fill", "brown");
+  root = json;
+  root.fixed = true;
+  root.x = w / 2;
+  root.y = h / 4;
+
+
+        // Build the path
+  var defs = vis.insert("svg:defs")
+      .data(["end"]);
+
+
+  defs.enter().append("svg:path")
+      .attr("d", "M0,-5L10,0L0,5");
+
+     update();
+});
+
+
+/**
+ *
+ */
+function update() {
+  var nodes = flatten(root),
+      links = d3.layout.tree().links(nodes);
+
+  // Restart the force layout.
+  force.nodes(nodes)
+        .links(links)
+        .gravity(0.05)
+    .charge(-1500)
+    .linkDistance(100)
+    .friction(0.5)
+    .linkStrength(function(l, i) {return 1; })
+    .size([w, h])
+    .on("tick", tick)
+        .start();
+
+   var path = vis.selectAll("path.link")
+      .data(links, function(d) { return d.target.id; });
+
+    path.enter().insert("svg:path")
+      .attr("class", "link")
+      // .attr("marker-end", "url(#end)")
+      .style("stroke", "#eee");
+
+
+  // Exit any old paths.
+  path.exit().remove();
+
+
+  var node_image_size_default = 50;
+
+  // Update the nodes…
+  var node = vis.selectAll("g.node")
+      .data(nodes, function(d) { return d.id; });
+
+
+  // Enter any new nodes.
+  var nodeEnter = node.enter().append("svg:g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+      .on("click", click)
+      .call(force.drag);
+
+  // Append a circle
+  nodeEnter.append("svg:circle")
+      .attr("r", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
+      .style("fill", "#eee");
+
+
+  // Append images
+  var images = nodeEnter.append("svg:image")
+        .attr("xlink:href",  function(d) { return d.img;})
+        .attr("x", function(d) { return -25;})
+        .attr("y", function(d) { return -25;})
+        .attr("height", node_image_size_default)
+        .attr("width", node_image_size_default);
+
+  // make the image grow a little on mouse over and add the text details on click
+  var setEvents = images
+          // Append hero text
+          .on( 'click', function (d) {
+              d3.select("h1").html(d.hero);
+              d3.select("h2").html(d.name);
+              d3.select("h3").html ("Take me to " + "<a href='" + d.link + "' >"  + d.hero + " web page ⇢"+ "</a>" );
+           })
+
+          .on( 'mouseenter', function() {
+            // select element in current context
+            d3.select( this )
+              .transition()
+              .attr("x", function(d) { return -60;})
+              .attr("y", function(d) { return -60;})
+              .attr("height", node_image_size_default * 2)
+              .attr("width", node_image_size_default * 2);
+          })
+          // set back
+          .on( 'mouseleave', function() {
+            d3.select( this )
+              .transition()
+              .attr("x", function(d) { return -25;})
+              .attr("y", function(d) { return -25;})
+              .attr("height", node_image_size_default)
+              .attr("width", node_image_size_default);
+          });
+
+  // Append hero name on roll over next to the node as well
+  nodeEnter.append("text")
+      .attr("class", "nodetext")
+      .attr("x", x_browser)
+      .attr("y", y_browser +15)
+      .attr("fill", tcBlack)
+      .text(function(d) { return d.hero; });
+
+
+  // Exit any old nodes.
+  node.exit().remove();
+
+
+  // Re-select for update.
+  path = vis.selectAll("path.link");
+  node = vis.selectAll("g.node");
 
 function tick() {
 
-  robot_x_position += x(1);
-  // Move robot
-  g.select(".robot")
-    .transition()
-    .attr("transform", "translate(" + robot_x_position + ",0)")
-    .duration(10);
 
-  var laser = d3.line()
-      .x(function (d) {return d;})
-      .y(function () {return height/2 - robot_height/2;});
+    path.attr("d", function(d) {
 
-  g.append("g")
-      .attr("class", "laser").append("path")
-        .datum([robot_x_position + robot_width, width/2])
-        .attr("fill", "none")
-        .attr("stroke", "red")
-        .attr("stroke-linejoin", "round")
-        .attr("stroke-linecap", "round")
-        .attr("stroke-width", 1.5)
-        .attr("d", laser);
+     var dx = d.target.x - d.source.x,
+           dy = d.target.y - d.source.y,
+           dr = Math.sqrt(dx * dx + dy * dy);
+           return   "M" + d.source.x + ","
+            + d.source.y
+            + "A" + dr + ","
+            + dr + " 0 0,1 "
+            + d.target.x + ","
+            + d.target.y;
+  });
+    node.attr("transform", nodeTransform);
+  }
+}
 
-  g.select(".laser").transition().duration(100).remove();
 
-  // Update sensor information
-  var sensor_value = width/2 - robot_x_position + random();
+/**
+ * Gives the coordinates of the border for keeping the nodes inside a frame
+ * http://bl.ocks.org/mbostock/1129492
+ */
+function nodeTransform(d) {
+  d.x =  Math.max(maxNodeSize, Math.min(w - (d.imgwidth/2 || 16), d.x));
+    d.y =  Math.max(maxNodeSize, Math.min(h - (d.imgheight/2 || 16), d.y));
+    return "translate(" + d.x + "," + d.y + ")";
+   }
 
-  for (var i = 0; i < n; i++) {
-    data[i] = gaussian((width/2-x(i)+robot_width/2)-sensor_value);
+/**
+ * Toggle children on click.
+ */
+function click(d) {
+  // if (d.children) {
+  //   d._children = d.children;
+  //   d.children = null;
+  // } else {
+  //   d.children = d._children;
+  //   d._children = null;
+  // }
+
+  update();
+}
+
+
+/**
+ * Returns a list of all nodes under the root.
+ */
+function flatten(root) {
+  var nodes = [];
+  var i = 0;
+
+  function recurse(node) {
+    if (node.children)
+      node.children.forEach(recurse);
+    if (!node.id)
+      node.id = ++i;
+    nodes.push(node);
   }
 
-  console.log((width/2-robot_x_position), sensor_value);
-
-  // Redraw the line.
-  d3.select(this)
-      .attr("d", line)
-      .attr("transform", null);
-  d3.active(this)
-  // .attr("transform", "translate(" + x(0) + ",0)")
-    .transition()
-      .on("start", tick);
-
+  recurse(root);
+  return nodes;
 }
+
+
 </script>
+
+</body>
+</html>
