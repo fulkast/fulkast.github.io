@@ -27,14 +27,28 @@ var svg = d3.select("body").append("svg")
     .attr("width", w)
     .attr("height", h);
 
+  svg.append("defs")
+  .append("pattern")
+.attr("x", 0)
+.attr("y", 0)
+.attr("width", 50)
+     .attr("height", 50)
+  .attr("id", "bg")
+  .append("image")
+.attr("x", 0).attr("y", 0)
+       .attr("width", 50)
+     .attr("height", h)
+     .attr("xlink:href", "orange.jpeg")
+
 svg.selectAll("rect")
     .data(d3.range(x * y))
   .enter().append("rect")
     .attr("transform", translate)
     .attr("width", z)
     .attr("height", z)
-    .style("fill", function(d) { return d3.hsl(d % x / x * 360, 1, Math.floor(d / x) / y); })
-    .on("mouseover", mouseover);
+    .attr("fill", function() { return "url(#bg)";});
+    // .style("fill", function(d) { return d3.hsl(d % x / x * 360, 1, Math.floor(d / x) / y); })
+    // .on("mouseover", mouseover);
 
 function translate(d) {
   return "translate(" + (d % x) * z + "," + Math.floor(d / x) * z + ")";
