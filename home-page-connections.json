@@ -1,7 +1,7 @@
 {
  "hero": "This D3 layout's source",
  "name": "Data Driven Robotics",
- "img": "d2r.png",
+ "img": "images/d2r.png",
  "size": 40000,
  "link": "http://bl.ocks.org/eesur/be2abfb3155a38be4de4",
  "children": [
@@ -9,16 +9,16 @@
     {
       "hero": "Thymio",
       "name": "A particle filter in the Hall",
-      "link": "particle_filter.html",
-      "img":  "particles.gif",
+      "link": "src/particle_filter.html",
+      "img":  "images/particles.gif",
       "size": 40000
     },
 
     {
       "hero": "Usain HOG",
       "name": "A Histogram of Oriented Gradients",
-      "link": "hog.html",
-      "img":  "usain",
+      "link": "src/hog.html",
+      "img":  "images/usain",
       "size": 40000
     }
 
